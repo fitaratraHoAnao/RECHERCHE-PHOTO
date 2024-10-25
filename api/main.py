@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 from bs4 import BeautifulSoup
 import re
+import json
 
 app = Flask(__name__)
 
@@ -22,9 +23,19 @@ def recherche_images():
         response = requests.get(url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        for img_tag in soup.find_all("img", {"src": re.compile(r"^https://")}):
-            img_url = img_tag.get("src")
-            images.append(img_url)
+        # Rechercher les balises "a" qui contiennent des informations sur les images
+        for a_tag in soup.find_all("a", {"class": "iusc"}):
+            # L'attribut "m" contient les informations sur l'image, notamment l'URL haute résolution
+            m_json = a_tag.get("m")
+            if m_json:
+                try:
+                    # Convertir l'attribut "m" en JSON pour extraire l'URL de l'image
+                    metadata = json.loads(m_json)
+                    image_url = metadata.get("murl")  # URL de l'image haute qualité
+                    if image_url:
+                        images.append(image_url)
+                except json.JSONDecodeError:
+                    continue
 
     return jsonify({"images": images})
 
